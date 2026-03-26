@@ -1,0 +1,150 @@
+{
+  "project_context": {
+    "name": "Meal Planner App",
+    "domain": "Health, Wellness, Food & Productivity",
+    "theme": "LIGHT",
+    "archetype": "1 (Organic & Earthy)",
+    "aesthetic": "The Editorial Cookbook — merging high-end food magazine layouts with frictionless, bento-style task management. Soft, grounded, and intimate.",
+    "key_features": [
+      "Save Instagram/Facebook/YouTube recipe links",
+      "Custom tags & ingredient highlighting",
+      "Shared grocery checklist with live sync",
+      "Weekly meal planner grid (3 meals/day, 7 days)",
+      "Firebase Google Auth shared login"
+    ],
+    "platform": "React Native (Expo) - Android Mobile-First"
+  },
+  "colors": {
+    "mode": "light-only",
+    "background": {
+      "default": "#FDFBF7",
+      "surface": "#F4F0E6",
+      "elevated": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#1A1A1A",
+      "secondary": "#5C5852",
+      "tertiary": "#8A847B",
+      "inverse": "#FDFBF7"
+    },
+    "brand": {
+      "primary": "#2C4C3B",
+      "primary_hover": "#1A3625",
+      "accent": "#C8553D",
+      "accent_muted": "#E8D3CE"
+    },
+    "ui": {
+      "border": "#E5E0D8",
+      "divider": "#EFEAE0",
+      "success": "#3B6952",
+      "error": "#B83A28",
+      "warning": "#D68C45"
+    },
+    "tags": {
+      "bg": "#EAE5D9",
+      "text": "#2C4C3B",
+      "highlight_text": "#C8553D"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "headings": "Cormorant Garamond (or system serif fallback if not loaded)",
+      "body": "Manrope (or system sans-serif fallback if not loaded)",
+      "mono": "Space Mono (for quantities/measurements)"
+    },
+    "scale": {
+      "h1": { "size": 36, "lineHeight": 40, "weight": "600", "fontFamily": "headings", "letterSpacing": -0.5 },
+      "h2": { "size": 28, "lineHeight": 34, "weight": "600", "fontFamily": "headings", "letterSpacing": -0.3 },
+      "h3": { "size": 22, "lineHeight": 28, "weight": "600", "fontFamily": "headings", "letterSpacing": 0 },
+      "h4": { "size": 18, "lineHeight": 24, "weight": "500", "fontFamily": "body", "letterSpacing": 0 },
+      "body_lg": { "size": 16, "lineHeight": 24, "weight": "400", "fontFamily": "body" },
+      "body_base": { "size": 14, "lineHeight": 20, "weight": "400", "fontFamily": "body" },
+      "label": { "size": 12, "lineHeight": 16, "weight": "600", "fontFamily": "body", "letterSpacing": 1, "textTransform": "uppercase" }
+    },
+    "rules": {
+      "anti_default": "Never use default Roboto for Headings. Use the serif font to evoke the editorial cookbook feel.",
+      "tracking": "Use tight tracking on large headings, loose tracking on uppercase overlines/labels."
+    }
+  },
+  "spacing_and_layout": {
+    "system": "Tailwind-equivalent scale for React Native (4px base)",
+    "scale": {
+      "2": 8,
+      "4": 16,
+      "6": 24,
+      "8": 32,
+      "12": 48,
+      "16": 64
+    },
+    "strategies": {
+      "generous_spacing": "Use p-6 (24px) or p-8 (32px) for screen containers. Give food imagery room to breathe.",
+      "bento_grid": "For the weekly planner: Use horizontal FlatLists for days, vertical cards for meals. Avoid heavy card shadows; prefer subtle 1px borders and distinct surface colors.",
+      "cardless_lists": "For the grocery list, do not put each item in a card. Use a continuous flat list with soft dividers and ample vertical padding (py-4)."
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "Solid background (Brand Primary #2C4C3B), text inverse, rounded-full (borderRadius: 9999), minHeight: 48px, generous horizontal padding. No default Android elevation shadow.",
+      "secondary": "Transparent background, 1px border of #2C4C3B, text #2C4C3B, rounded-full.",
+      "accent_action": "For 'Add to List' or 'Save Recipe': Use Accent color (#C8553D) to draw the eye."
+    },
+    "cards": {
+      "recipe_card": "Minimalist. Image takes up 60% of height, sharp or slightly rounded corners (max 8px). Title in serif below the image. No shadow, just a subtle border (#E5E0D8).",
+      "meal_slot": "Surface background (#F4F0E6), dashed or solid 1px border. If empty, center an icon with muted text."
+    },
+    "inputs": {
+      "text_field": "Solid background (#F4F0E6), no border by default, 1px Primary border on focus. Large text size for easy typing in the kitchen.",
+      "tags": "Pill-shaped (borderRadius: 9999), bg: #EAE5D9, text: #2C4C3B. Compact padding (px-3 py-1).",
+      "checkbox": "Circular checkbox. When checked: solid #C8553D background with white checkmark. When unchecked: 1px border #C8553D. Checked items get text strikethrough and opacity 50%."
+    },
+    "navigation": {
+      "bottom_tab": "Solid elevated background (#FFFFFF), border-top 1px (#E5E0D8). Active icon uses #C8553D, inactive uses #8A847B. Clean, label-less icons preferred if intuitive."
+    },
+    "ingredient_highlighting": {
+      "style": "When text contains an ingredient, apply font-weight bold and color #2C4C3B, perhaps a very subtle #EAE5D9 background behind the specific word."
+    }
+  },
+  "media": {
+    "strategy": "Use high-quality, editorial flat-lay imagery to inspire cooking. Abstract/soft shapes for empty states.",
+    "assets": [
+      {
+        "category": "auth_background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/12b66b929b4f236abcdbd7c692c3b4d26ad2dedcff7498d6854d82e718dfd886.png",
+        "description": "Minimalist editorial flat lay of fresh cooking ingredients on a warm sandstone counter. Use behind the login/auth screen with a 40% dark overlay or glassmorphism panel."
+      },
+      {
+        "category": "empty_state_grocery",
+        "url": "https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/d309e8a78ad2985f864e27b35454703758398aaef2aed78db3b94a189bff9a33.png",
+        "description": "Minimalist 3D grocery bag. Use on the grocery tab when the list is completely empty."
+      },
+      {
+        "category": "recipe_placeholder",
+        "url": "https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/335726602e552f475e643488334c456741b86bddd6e19a620422dec822292e67.png",
+        "description": "Editorial plated dinner. Use as a fallback thumbnail if a YouTube/Instagram link fails to fetch an image thumbnail."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react-native",
+      "instruction": "Use lucide-react-native for consistent, clean SVG icons with 1.5px stroke width. (e.g., Home, Calendar, ShoppingBag, Plus, Bookmark)."
+    }
+  },
+  "motion_and_interactions": {
+    "gestures": "Support swipe-to-delete on grocery list items. Provide haptic feedback (ImpactFeedbackStyle.Light) when checking off groceries or dropping a recipe into a meal slot.",
+    "transitions": "Use soft, natural easing for modal and screen transitions. Avoid harsh pop-ins.",
+    "active_states": "Buttons must show opacity reduction (activeOpacity={0.7}) on press."
+  },
+  "accessibility": {
+    "contrast": "Text over backgrounds must meet 4.5:1. Primary text on surface exceeds 10:1.",
+    "touch_targets": "Minimum 48x48px for all interactive elements (especially checkboxes in the grocery list!).",
+    "test_ids": "Apply 'testID' (React Native equivalent to data-testid) to all interactive elements, e.g., testID='login-button', testID='grocery-item-checkbox', testID='recipe-card'."
+  },
+  "instructions_to_main_agent": [
+    "Build a React Native (Expo) app for Android.",
+    "Set up Firebase Auth and Firestore for real-time syncing of the shared grocery list and meal plans.",
+    "Use standard StyleSheet.create or a styling library (like NativeWind if permitted, but stick strictly to the color/spacing values provided here).",
+    "For the Planner: Create a view with 7 days (horizontal scroll/tabs) and 3 vertical sections per day (Breakfast, Lunch, Dinner).",
+    "For recipes: Create an input to paste URLs (IG, YT, FB) and display them as cards using the fallback image if thumbnail scraping is complex.",
+    "For grocery list: Build a robust, real-time checklist using Circular Checkboxes and Strikethrough styles.",
+    "Never use plain Roboto for prominent typography; integrate Cormorant Garamond (or another serif) via expo-font for the 'Cookbook' feel."
+  ]
+}
