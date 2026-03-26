@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors, spacing } from '../src/constants/theme';
@@ -17,6 +17,8 @@ export default function AddRecipeScreen() {
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase();
@@ -26,9 +28,7 @@ export default function AddRecipeScreen() {
     setTagInput('');
   };
 
-  const removeTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
+  const removeTag = (tag: string) => setTags(tags.filter(t => t !== tag));
 
   const addIngredient = () => {
     const ing = ingredientInput.trim();
@@ -38,33 +38,31 @@ export default function AddRecipeScreen() {
     setIngredientInput('');
   };
 
-  const removeIngredient = (ing: string) => {
-    setIngredients(ingredients.filter(i => i !== ing));
-  };
+  const removeIngredient = (ing: string) => setIngredients(ingredients.filter(i => i !== ing));
 
   const handleSave = async () => {
-    if (!url.trim()) {
-      Alert.alert('Missing URL', 'Please paste a recipe link');
-      return;
-    }
-    if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please add a title for this recipe');
-      return;
-    }
+    setError('');
+    if (!url.trim()) { setError('Please paste a recipe link'); return; }
+    if (!title.trim()) { setError('Please add a title for this recipe'); return; }
 
     setSaving(true);
     try {
-      await api.createRecipe({
+      const result = await api.createRecipe({
         url: url.trim(),
         title: title.trim(),
         tags,
         ingredients,
         notes: notes.trim() || undefined,
       });
-      router.back();
+      console.log('Recipe saved:', result);
+      setSuccess(true);
+      // Short delay so user sees success message, then go back
+      setTimeout(() => {
+        router.back();
+      }, 500);
     } catch (e: any) {
-      Alert.alert('Error', 'Failed to save recipe. Please try again.');
       console.log('Save recipe error:', e);
+      setError('Failed to save recipe: ' + (e.message || 'Unknown error'));
     }
     setSaving(false);
   };
@@ -94,8 +92,12 @@ export default function AddRecipeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Success/Error Messages */}
+        {success && <View style={styles.successBanner}><Text style={styles.successText}>Recipe saved!</Text></View>}
+        {error ? <View style={styles.errorBanner}><Text style={styles.errorText}>{error}</Text></View> : null}
+
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
-          {/* URL Input */}
+          {/* URL */}
           <View style={styles.section}>
             <Text style={styles.label}>RECIPE LINK</Text>
             <View style={styles.urlInputContainer}>
@@ -106,7 +108,7 @@ export default function AddRecipeScreen() {
                 placeholder="Paste Instagram, YouTube or Facebook link"
                 placeholderTextColor={colors.textTertiary}
                 value={url}
-                onChangeText={setUrl}
+                onChangeText={(t) => { setUrl(t); setError(''); }}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
@@ -128,7 +130,7 @@ export default function AddRecipeScreen() {
               placeholder="e.g. Butter Chicken, Pasta Carbonara"
               placeholderTextColor={colors.textTertiary}
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(t) => { setTitle(t); setError(''); }}
             />
           </View>
 
@@ -224,6 +226,10 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 9999 },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: colors.textInverse, fontWeight: '600', fontSize: 14 },
+  successBanner: { backgroundColor: '#E8F5E9', paddingVertical: 10, paddingHorizontal: spacing.lg },
+  successText: { color: colors.success, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  errorBanner: { backgroundColor: '#FFF0EE', paddingVertical: 10, paddingHorizontal: spacing.lg },
+  errorText: { color: colors.error, fontSize: 13, textAlign: 'center' },
   form: { flex: 1 },
   formContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   section: { marginBottom: spacing.lg },
@@ -254,8 +260,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: colors.tagText, fontWeight: '500' },
   ingredientChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999,
-    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, backgroundColor: '#E8F5E9',
   },
   ingredientChipText: { fontSize: 13, color: colors.brandPrimary, fontWeight: '600' },
 });

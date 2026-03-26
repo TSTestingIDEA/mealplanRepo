@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { colors, spacing } from '../../src/constants/theme';
@@ -22,25 +22,30 @@ export default function GroceryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [newItem, setNewItem] = useState('');
   const [newQuantity, setNewQuantity] = useState('');
+  const [error, setError] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const fetchGroceryList = async () => {
     try {
+      setError('');
       const res = await api.getGroceryList(weekStart);
       setItems(res.grocery_list?.items || []);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Fetch grocery error:', e);
+      setError('Failed to load grocery list');
     }
-  };
-
-  const loadData = async () => {
-    setLoading(true);
-    await fetchGroceryList();
-    setLoading(false);
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      let isActive = true;
+      const load = async () => {
+        setLoading(true);
+        await fetchGroceryList();
+        if (isActive) setLoading(false);
+      };
+      load();
+      return () => { isActive = false; };
     }, [weekStart])
   );
 
@@ -51,43 +56,57 @@ export default function GroceryScreen() {
   };
 
   const addItem = async () => {
-    if (!newItem.trim()) return;
+    const name = newItem.trim();
+    if (!name) return;
+
+    setAdding(true);
+    setError('');
     try {
       const res = await api.addGroceryItem(weekStart, {
-        name: newItem.trim(),
+        name,
         quantity: newQuantity.trim() || undefined,
       });
       setItems(res.grocery_list?.items || []);
       setNewItem('');
       setNewQuantity('');
-    } catch (e) {
+    } catch (e: any) {
       console.log('Add item error:', e);
+      setError('Failed to add item: ' + (e.message || 'Unknown error'));
     }
+    setAdding(false);
   };
 
   const toggleItem = async (itemId: string) => {
+    // Optimistic update
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, checked: !i.checked } : i));
     try {
       const res = await api.toggleGroceryItem(weekStart, itemId);
       setItems(res.grocery_list?.items || []);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Toggle item error:', e);
+      // Revert on error
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, checked: !i.checked } : i));
+      setError('Failed to update item');
     }
   };
 
   const deleteItem = async (itemId: string) => {
+    // Optimistic update
+    const prevItems = items;
+    setItems(prev => prev.filter(i => i.id !== itemId));
     try {
       const res = await api.deleteGroceryItem(weekStart, itemId);
       setItems(res.grocery_list?.items || []);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Delete item error:', e);
+      setItems(prevItems);
+      setError('Failed to delete item');
     }
   };
 
   const uncheckedItems = items.filter(i => !i.checked);
   const checkedItems = items.filter(i => i.checked);
   const progress = items.length > 0 ? Math.round((checkedItems.length / items.length) * 100) : 0;
-
-  const EMPTY_IMG = 'https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/d309e8a78ad2985f864e27b35454703758398aaef2aed78db3b94a189bff9a33.png';
 
   const renderItem = ({ item }: { item: GroceryItem }) => (
     <View style={[styles.groceryItem, item.checked && styles.groceryItemChecked]}>
@@ -115,7 +134,6 @@ export default function GroceryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Grocery List</Text>
           <View style={styles.weekNav}>
@@ -129,7 +147,6 @@ export default function GroceryScreen() {
           </View>
         </View>
 
-        {/* Progress */}
         {items.length > 0 && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
@@ -139,7 +156,8 @@ export default function GroceryScreen() {
           </View>
         )}
 
-        {/* Items List */}
+        {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
         {loading ? (
           <View style={styles.centered}><ActivityIndicator size="large" color={colors.brandPrimary} /></View>
         ) : items.length === 0 ? (
@@ -156,12 +174,11 @@ export default function GroceryScreen() {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandPrimary} />}
-            ListHeaderComponent={uncheckedItems.length > 0 && checkedItems.length > 0 ? null : undefined}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
         )}
 
-        {/* Add Item */}
+        {/* Add Item - always visible */}
         <View style={styles.addContainer}>
           <View style={styles.addInputRow}>
             <TextInput
@@ -170,7 +187,7 @@ export default function GroceryScreen() {
               placeholder="Add item..."
               placeholderTextColor={colors.textTertiary}
               value={newItem}
-              onChangeText={setNewItem}
+              onChangeText={(t) => { setNewItem(t); setError(''); }}
               onSubmitEditing={addItem}
               returnKeyType="done"
             />
@@ -181,14 +198,19 @@ export default function GroceryScreen() {
               placeholderTextColor={colors.textTertiary}
               value={newQuantity}
               onChangeText={setNewQuantity}
+              onSubmitEditing={addItem}
             />
             <TouchableOpacity
               testID="grocery-add-btn"
-              style={[styles.addBtn, !newItem.trim() && styles.addBtnDisabled]}
+              style={[styles.addBtn, (!newItem.trim() || adding) && styles.addBtnDisabled]}
               onPress={addItem}
-              disabled={!newItem.trim()}
+              disabled={!newItem.trim() || adding}
             >
-              <Plus size={22} color={colors.textInverse} />
+              {adding ? (
+                <ActivityIndicator size="small" color={colors.textInverse} />
+              ) : (
+                <Plus size={22} color={colors.textInverse} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -208,6 +230,7 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 6, backgroundColor: colors.surface, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 3 },
   progressText: { fontSize: 13, color: colors.textTertiary, fontWeight: '500' },
+  errorBanner: { color: colors.error, fontSize: 13, textAlign: 'center', paddingVertical: 6, backgroundColor: '#FFF0EE', marginHorizontal: spacing.lg, borderRadius: 8, marginTop: 8 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 80 },
   emptyEmoji: { fontSize: 48, marginBottom: spacing.md },

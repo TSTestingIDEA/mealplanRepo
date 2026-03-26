@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, FlatList, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { colors, spacing } from '../../src/constants/theme';
 import { api } from '../../src/services/api';
 import { getWeekStart, getWeekDates, shiftWeek, formatWeekRange, getPlatformIcon } from '../../src/utils/helpers';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Plus, X, Edit3 } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
@@ -18,9 +18,13 @@ export default function PlannerScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerMeal, setPickerMeal] = useState<string>('');
-  const [pickerDay, setPickerDay] = useState<string>('');
+  const [pickerMeal, setPickerMeal] = useState('');
+  const [pickerDay, setPickerDay] = useState('');
   const [recipes, setRecipes] = useState<any[]>([]);
+  const [manualName, setManualName] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [error, setError] = useState('');
 
   const weekDates = getWeekDates(weekStart);
 
@@ -42,63 +46,75 @@ export default function PlannerScreen() {
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    await Promise.all([fetchMealPlan(), fetchRecipes()]);
-    setLoading(false);
-  };
-
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      let isActive = true;
+      const load = async () => {
+        setLoading(true);
+        await Promise.all([fetchMealPlan(), fetchRecipes()]);
+        if (isActive) setLoading(false);
+      };
+      load();
+      return () => { isActive = false; };
     }, [weekStart])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([fetchMealPlan(), fetchRecipes()]);
     setRefreshing(false);
   };
 
-  const assignRecipe = async (recipe: any) => {
+  const saveMealSlot = async (day: string, meal: string, slotData: any) => {
     if (!mealPlan) return;
     const updatedDays = { ...mealPlan.days };
-    if (!updatedDays[pickerDay]) {
-      updatedDays[pickerDay] = { breakfast: null, lunch: null, dinner: null };
+    if (!updatedDays[day]) updatedDays[day] = { breakfast: null, lunch: null, dinner: null };
+    updatedDays[day][meal] = slotData;
+
+    try {
+      const res = await api.updateMealPlan({ week_start: weekStart, days: updatedDays });
+      setMealPlan(res.meal_plan);
+      setError('');
+    } catch (e: any) {
+      console.log('Update meal plan error:', e);
+      setError('Failed to update meal plan');
     }
-    updatedDays[pickerDay][pickerMeal] = {
+  };
+
+  const assignRecipe = async (recipe: any) => {
+    await saveMealSlot(pickerDay, pickerMeal, {
       recipe_id: recipe.id,
       recipe_title: recipe.title,
       recipe_url: recipe.url,
       recipe_thumbnail: recipe.thumbnail,
-    };
+    });
+    setShowPicker(false);
+  };
 
-    try {
-      const res = await api.updateMealPlan({ week_start: weekStart, days: updatedDays });
-      setMealPlan(res.meal_plan);
-    } catch (e) {
-      console.log('Update meal plan error:', e);
-    }
+  const assignManual = async () => {
+    if (!manualName.trim()) return;
+    await saveMealSlot(pickerDay, pickerMeal, {
+      recipe_id: null,
+      recipe_title: manualName.trim(),
+      recipe_url: manualUrl.trim() || null,
+      recipe_thumbnail: null,
+    });
+    setManualName('');
+    setManualUrl('');
+    setShowManualInput(false);
     setShowPicker(false);
   };
 
   const clearSlot = async (day: string, meal: string) => {
-    if (!mealPlan) return;
-    const updatedDays = { ...mealPlan.days };
-    if (updatedDays[day]) {
-      updatedDays[day][meal] = null;
-    }
-    try {
-      const res = await api.updateMealPlan({ week_start: weekStart, days: updatedDays });
-      setMealPlan(res.meal_plan);
-    } catch (e) {
-      console.log('Clear slot error:', e);
-    }
+    await saveMealSlot(day, meal, null);
   };
 
   const openRecipePicker = (day: string, meal: string) => {
     setPickerDay(day);
     setPickerMeal(meal);
+    setManualName('');
+    setManualUrl('');
+    setShowManualInput(false);
     setShowPicker(true);
   };
 
@@ -107,7 +123,6 @@ export default function PlannerScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Meal Plan</Text>
         <View style={styles.weekNav}>
@@ -121,7 +136,8 @@ export default function PlannerScreen() {
         </View>
       </View>
 
-      {/* Day Tabs */}
+      {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabs}>
         {weekDates.map((wd, i) => (
           <TouchableOpacity
@@ -136,7 +152,6 @@ export default function PlannerScreen() {
         ))}
       </ScrollView>
 
-      {/* Meal Slots */}
       {loading ? (
         <View style={styles.centered}><ActivityIndicator size="large" color={colors.brandPrimary} /></View>
       ) : (
@@ -155,15 +170,15 @@ export default function PlannerScreen() {
                   <View style={styles.filledSlot}>
                     <TouchableOpacity
                       style={styles.filledContent}
-                      onPress={() => slot.recipe_url && Linking.openURL(slot.recipe_url)}
-                      activeOpacity={0.7}
+                      onPress={() => slot.recipe_url ? Linking.openURL(slot.recipe_url) : null}
+                      activeOpacity={slot.recipe_url ? 0.7 : 1}
                     >
-                      <View style={styles.recipeInfo}>
-                        <Text style={styles.recipeTitle} numberOfLines={2}>{slot.recipe_title}</Text>
-                        {slot.recipe_url && (
-                          <Text style={styles.viewLink}>View recipe →</Text>
-                        )}
-                      </View>
+                      <Text style={styles.recipeTitle} numberOfLines={2}>{slot.recipe_title}</Text>
+                      {slot.recipe_url ? (
+                        <Text style={styles.viewLink}>View recipe →</Text>
+                      ) : (
+                        <Text style={styles.manualLabel}>Manual entry</Text>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity
                       testID={`clear-${currentDay?.day}-${meal}`}
@@ -181,7 +196,7 @@ export default function PlannerScreen() {
                     activeOpacity={0.7}
                   >
                     <Plus size={20} color={colors.textTertiary} />
-                    <Text style={styles.emptySlotText}>Add recipe</Text>
+                    <Text style={styles.emptySlotText}>Add meal</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -195,14 +210,76 @@ export default function PlannerScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Recipe</Text>
+              <Text style={styles.modalTitle}>
+                {MEAL_LABELS[pickerMeal] || 'Meal'}
+              </Text>
               <TouchableOpacity testID="close-picker-btn" onPress={() => setShowPicker(false)}>
                 <X size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
+
+            {/* Manual Entry Section */}
+            <View style={styles.manualSection}>
+              {!showManualInput ? (
+                <TouchableOpacity
+                  testID="manual-entry-toggle"
+                  style={styles.manualToggle}
+                  onPress={() => setShowManualInput(true)}
+                >
+                  <Edit3 size={16} color={colors.accent} />
+                  <Text style={styles.manualToggleText}>Type a meal name manually</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.manualForm}>
+                  <TextInput
+                    testID="manual-meal-name"
+                    style={styles.manualInput}
+                    placeholder="Meal name (e.g. Dal Rice, Pasta)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={manualName}
+                    onChangeText={setManualName}
+                    autoFocus
+                  />
+                  <TextInput
+                    testID="manual-meal-url"
+                    style={styles.manualInput}
+                    placeholder="Recipe link (optional)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={manualUrl}
+                    onChangeText={setManualUrl}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
+                  <View style={styles.manualActions}>
+                    <TouchableOpacity style={styles.manualCancelBtn} onPress={() => setShowManualInput(false)}>
+                      <Text style={styles.manualCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      testID="manual-save-btn"
+                      style={[styles.manualSaveBtn, !manualName.trim() && styles.manualSaveBtnDisabled]}
+                      onPress={assignManual}
+                      disabled={!manualName.trim()}
+                    >
+                      <Text style={styles.manualSaveText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Divider */}
+            {recipes.length > 0 && (
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or pick from saved recipes</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
+
+            {/* Recipe List */}
             {recipes.length === 0 ? (
               <View style={styles.modalEmpty}>
-                <Text style={styles.modalEmptyText}>No recipes saved yet.{'\n'}Add some recipes first!</Text>
+                <Text style={styles.modalEmptyText}>No saved recipes yet.{'\n'}Type a meal name above instead!</Text>
               </View>
             ) : (
               <FlatList
@@ -238,11 +315,9 @@ const styles = StyleSheet.create({
   weekNav: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   navBtn: { padding: 6 },
   weekLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  errorBanner: { color: colors.error, fontSize: 13, textAlign: 'center', paddingVertical: 6, backgroundColor: '#FFF0EE', marginHorizontal: spacing.lg, borderRadius: 8, marginTop: 4 },
   dayTabs: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: 8 },
-  dayTab: {
-    width: 56, height: 68, borderRadius: 16, backgroundColor: colors.surface,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  dayTab: { width: 56, height: 68, borderRadius: 16, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
   dayTabActive: { backgroundColor: colors.brandPrimary },
   dayLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   dayLabelActive: { color: colors.textInverse },
@@ -259,9 +334,9 @@ const styles = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
   filledContent: { flex: 1, padding: 16 },
-  recipeInfo: {},
   recipeTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
   viewLink: { fontSize: 13, color: colors.accent, marginTop: 4, fontWeight: '500' },
+  manualLabel: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
   clearBtn: { padding: 16 },
   emptySlot: {
     height: 80, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border,
@@ -272,13 +347,27 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalContent: {
     backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    maxHeight: '70%', paddingBottom: 40,
+    maxHeight: '80%', paddingBottom: 40,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   modalTitle: { fontSize: 20, fontWeight: '600', color: colors.textPrimary },
+  manualSection: { padding: spacing.lg, paddingBottom: 0 },
+  manualToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: colors.accentMuted, borderRadius: 12 },
+  manualToggleText: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  manualForm: { gap: 10 },
+  manualInput: { backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 16, height: 48, fontSize: 15, color: colors.textPrimary },
+  manualActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  manualCancelBtn: { paddingVertical: 10, paddingHorizontal: 16 },
+  manualCancelText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' },
+  manualSaveBtn: { backgroundColor: colors.accent, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 9999 },
+  manualSaveBtnDisabled: { opacity: 0.4 },
+  manualSaveText: { color: colors.textInverse, fontWeight: '600', fontSize: 14 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
+  dividerText: { paddingHorizontal: 12, fontSize: 12, color: colors.textTertiary },
   modalEmpty: { padding: spacing.xxl, alignItems: 'center' },
   modalEmptyText: { fontSize: 15, color: colors.textTertiary, textAlign: 'center', lineHeight: 22 },
   pickerItem: {

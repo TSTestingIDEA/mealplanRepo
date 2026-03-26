@@ -15,28 +15,30 @@ interface Recipe {
   platform: string;
   tags: string[];
   ingredients: string[];
-  thumbnail?: string;
   created_at: string;
 }
 
 export default function RecipesScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [error, setError] = useState('');
 
   const fetchRecipes = async () => {
     try {
+      setError('');
       const res = searchQuery || selectedTag
         ? await api.searchRecipes(searchQuery, selectedTag)
         : await api.getRecipes();
       setRecipes(res.recipes || []);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Fetch recipes error:', e);
+      setError('Failed to load recipes');
     }
   };
 
@@ -49,25 +51,29 @@ export default function RecipesScreen() {
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    await Promise.all([fetchRecipes(), fetchTags()]);
-    setLoading(false);
-  };
-
+  // Refetch every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      let isActive = true;
+      const loadData = async () => {
+        setLoading(true);
+        await Promise.all([fetchRecipes(), fetchTags()]);
+        if (isActive) setLoading(false);
+      };
       loadData();
+      return () => { isActive = false; };
     }, [searchQuery, selectedTag])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([fetchRecipes(), fetchTags()]);
     setRefreshing(false);
   };
 
-  const RECIPE_PLACEHOLDER = 'https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/335726602e552f475e643488334c456741b86bddd6e19a620422dec822292e67.png';
+  const handleLogout = async () => {
+    await logout();
+  };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
     <TouchableOpacity
@@ -77,9 +83,7 @@ export default function RecipesScreen() {
       activeOpacity={0.7}
     >
       <View style={styles.cardImageContainer}>
-        <View style={styles.cardImagePlaceholder}>
-          <Text style={styles.platformEmoji}>{getPlatformIcon(item.platform)}</Text>
-        </View>
+        <Text style={styles.platformEmoji}>{getPlatformIcon(item.platform)}</Text>
         <View style={styles.platformBadge}>
           <Text style={styles.platformBadgeText}>{item.platform}</Text>
         </View>
@@ -109,18 +113,16 @@ export default function RecipesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Our Kitchen</Text>
           <Text style={styles.subtitle}>{recipes.length} recipes saved</Text>
         </View>
-        <TouchableOpacity testID="logout-btn" onPress={logout} style={styles.logoutBtn}>
+        <TouchableOpacity testID="logout-btn" onPress={handleLogout} style={styles.logoutBtn}>
           <LogOut size={20} color={colors.textTertiary} />
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View style={styles.searchContainer}>
         <Search size={18} color={colors.textTertiary} />
         <TextInput
@@ -138,7 +140,6 @@ export default function RecipesScreen() {
         ) : null}
       </View>
 
-      {/* Tags Filter */}
       {allTags.length > 0 && (
         <FlatList
           horizontal
@@ -160,14 +161,15 @@ export default function RecipesScreen() {
         />
       )}
 
-      {/* Recipe List */}
+      {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
       {loading ? (
         <View style={styles.centered}><ActivityIndicator size="large" color={colors.brandPrimary} /></View>
       ) : recipes.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🍳</Text>
           <Text style={styles.emptyTitle}>No recipes yet</Text>
-          <Text style={styles.emptyText}>Save your favorite recipes from{'\n'}Instagram, YouTube & Facebook</Text>
+          <Text style={styles.emptyText}>Tap the + button to save your{'\n'}favorite recipes from social media</Text>
         </View>
       ) : (
         <FlatList
@@ -180,7 +182,6 @@ export default function RecipesScreen() {
         />
       )}
 
-      {/* FAB */}
       <TouchableOpacity
         testID="add-recipe-fab"
         style={styles.fab}
@@ -216,7 +217,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
   },
   cardImageContainer: { height: 120, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-  cardImagePlaceholder: { justifyContent: 'center', alignItems: 'center' },
   platformEmoji: { fontSize: 36 },
   platformBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 9999 },
   platformBadgeText: { color: '#fff', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
@@ -231,6 +231,7 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
   emptyTitle: { fontSize: 22, fontWeight: '600', color: colors.textPrimary },
   emptyText: { fontSize: 15, color: colors.textTertiary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
+  errorBanner: { color: colors.error, fontSize: 13, textAlign: 'center', paddingVertical: 6, backgroundColor: '#FFF0EE', marginHorizontal: spacing.lg, borderRadius: 8 },
   fab: {
     position: 'absolute', bottom: 24, right: 24, width: 56, height: 56,
     borderRadius: 28, backgroundColor: colors.accent, justifyContent: 'center',
