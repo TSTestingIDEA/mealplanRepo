@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 import { auth } from '../src/config/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { colors, spacing } from '../src/constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const AUTH_BG = 'https://static.prod-images.emergentagent.com/jobs/3abfe753-7d87-44d4-9874-01a7e1b53b6f/images/12b66b929b4f236abcdbd7c692c3b4d26ad2dedcff7498d6854d82e718dfd886.png';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 
 export default function AuthScreen() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -25,59 +24,35 @@ export default function AuthScreen() {
     }
   }, [user, loading]);
 
-  const handleGoogleSignIn = async () => {
-    setAuthLoading(true);
-    setError('');
-    try {
-      const redirectUri = AuthSession.makeRedirectUri({ preferLocalhost: false });
-      const clientId = process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-      
-      const discovery = {
-        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-        tokenEndpoint: 'https://oauth2.googleapis.com/token',
-      };
-
-      const request = new AuthSession.AuthRequest({
-        clientId: `${clientId ? clientId : '92385648492'}-${getWebClientSuffix()}.apps.googleusercontent.com`,
-        scopes: ['openid', 'profile', 'email'],
-        redirectUri,
-        responseType: AuthSession.ResponseType.IdToken,
-        extraParams: { nonce: Math.random().toString(36).substring(2) },
-      });
-
-      const result = await request.promptAsync(discovery);
-      
-      if (result.type === 'success' && result.params?.id_token) {
-        const credential = GoogleAuthProvider.credential(result.params.id_token);
-        await signInWithCredential(auth, credential);
-      } else {
-        setError('Google sign-in was cancelled');
-      }
-    } catch (e: any) {
-      console.log('Google sign-in error:', e);
-      setError('Google sign-in failed. Try email login below.');
+  const getErrorMessage = (code: string) => {
+    switch (code) {
+      case 'auth/invalid-email': return 'Invalid email address';
+      case 'auth/user-disabled': return 'This account has been disabled';
+      case 'auth/user-not-found': return 'No account found with this email';
+      case 'auth/wrong-password': return 'Incorrect password';
+      case 'auth/invalid-credential': return 'Incorrect email or password';
+      case 'auth/email-already-in-use': return 'An account already exists with this email';
+      case 'auth/weak-password': return 'Password should be at least 6 characters';
+      case 'auth/too-many-requests': return 'Too many attempts. Try again later';
+      default: return 'Something went wrong. Please try again';
     }
-    setAuthLoading(false);
   };
 
-  function getWebClientSuffix() {
-    return '';
-  }
-
-  const handleDemoLogin = async () => {
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
+      return;
+    }
     setAuthLoading(true);
     setError('');
     try {
-      // Try to sign in with a demo account
-      try {
-        await signInWithEmailAndPassword(auth, 'demo@mealplanner.com', 'Demo123!');
-      } catch {
-        // If not exists, create it
-        await createUserWithEmailAndPassword(auth, 'demo@mealplanner.com', 'Demo123!');
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
+      } else {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
       }
     } catch (e: any) {
-      console.log('Demo login error:', e);
-      setError(e.message || 'Login failed');
+      setError(getErrorMessage(e.code || ''));
     }
     setAuthLoading(false);
   };
@@ -93,116 +68,116 @@ export default function AuthScreen() {
   if (user) return null;
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={{ uri: AUTH_BG }}
-        style={styles.bgImage}
-        resizeMode="cover"
-      >
-        <View style={styles.overlay} />
-        <SafeAreaView style={styles.content}>
-          <View style={styles.topSection}>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* Branding */}
+          <View style={styles.brandSection}>
+            <Text style={styles.emoji}>🍽️</Text>
             <Text style={styles.appName}>Our Kitchen</Text>
             <Text style={styles.tagline}>Plan meals together,{'\n'}cook with love</Text>
           </View>
 
-          <View style={styles.bottomSection}>
+          {/* Form */}
+          <View style={styles.formSection}>
+            <Text style={styles.formTitle}>{isSignUp ? 'Create Account' : 'Welcome Back'}</Text>
+
+            {/* Email */}
+            <View style={styles.inputContainer}>
+              <Mail size={18} color={colors.textTertiary} />
+              <TextInput
+                testID="auth-email-input"
+                style={styles.input}
+                placeholder="Email address"
+                placeholderTextColor={colors.textTertiary}
+                value={email}
+                onChangeText={(t) => { setEmail(t); setError(''); }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+              />
+            </View>
+
+            {/* Password */}
+            <View style={styles.inputContainer}>
+              <Lock size={18} color={colors.textTertiary} />
+              <TextInput
+                testID="auth-password-input"
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={colors.textTertiary}
+                value={password}
+                onChangeText={(t) => { setPassword(t); setError(''); }}
+                secureTextEntry={!showPassword}
+                textContentType="password"
+              />
+              <TouchableOpacity testID="toggle-password-btn" onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                {showPassword ? <EyeOff size={18} color={colors.textTertiary} /> : <Eye size={18} color={colors.textTertiary} />}
+              </TouchableOpacity>
+            </View>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Submit */}
             <TouchableOpacity
-              testID="google-sign-in-btn"
-              style={styles.googleButton}
-              onPress={handleGoogleSignIn}
+              testID="auth-submit-btn"
+              style={[styles.submitBtn, authLoading && styles.submitBtnDisabled]}
+              onPress={handleSubmit}
               activeOpacity={0.7}
               disabled={authLoading}
             >
               {authLoading ? (
                 <ActivityIndicator color={colors.textInverse} />
               ) : (
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
+                <Text style={styles.submitBtnText}>{isSignUp ? 'Sign Up' : 'Log In'}</Text>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              testID="demo-login-btn"
-              style={styles.demoButton}
-              onPress={handleDemoLogin}
-              activeOpacity={0.7}
-              disabled={authLoading}
-            >
-              <Text style={styles.demoButtonText}>Try Demo Account</Text>
+            {/* Toggle */}
+            <TouchableOpacity testID="auth-toggle-btn" onPress={() => { setIsSignUp(!isSignUp); setError(''); }} style={styles.toggleBtn}>
+              <Text style={styles.toggleText}>
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                <Text style={styles.toggleLink}>{isSignUp ? 'Log In' : 'Sign Up'}</Text>
+              </Text>
             </TouchableOpacity>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <Text style={styles.hint}>
-              Share this login with your partner{'\n'}for synced meal plans
-            </Text>
           </View>
-        </SafeAreaView>
-      </ImageBackground>
-    </View>
+
+          {/* Hint */}
+          <Text style={styles.hint}>
+            Use the same email & password on both{'\n'}phones to share your meal plans
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  bgImage: { flex: 1, width: '100%', height: '100%' },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  content: { flex: 1, justifyContent: 'space-between', paddingHorizontal: spacing.lg },
-  topSection: { paddingTop: 60 },
-  appName: {
-    fontSize: 44,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    fontStyle: 'italic',
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.xl },
+  brandSection: { alignItems: 'center', marginBottom: 40 },
+  emoji: { fontSize: 56, marginBottom: spacing.md },
+  appName: { fontSize: 40, fontWeight: '300', color: colors.textPrimary, fontStyle: 'italic', letterSpacing: -1 },
+  tagline: { fontSize: 16, color: colors.textTertiary, textAlign: 'center', marginTop: spacing.sm, lineHeight: 24 },
+  formSection: { gap: 14 },
+  formTitle: { fontSize: 22, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 },
+  inputContainer: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: 12, paddingHorizontal: 16, height: 54, borderWidth: 1, borderColor: colors.border,
   },
-  tagline: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: spacing.sm,
-    lineHeight: 26,
+  input: { flex: 1, marginLeft: 12, fontSize: 16, color: colors.textPrimary },
+  eyeBtn: { padding: 6 },
+  errorText: { color: colors.error, fontSize: 13, marginTop: -4 },
+  submitBtn: {
+    backgroundColor: colors.brandPrimary, height: 54, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', marginTop: 4,
   },
-  bottomSection: {
-    paddingBottom: 40,
-    gap: 14,
-  },
-  googleButton: {
-    backgroundColor: colors.brandPrimary,
-    height: 56,
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleButtonText: {
-    color: colors.textInverse,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  demoButton: {
-    backgroundColor: 'transparent',
-    height: 56,
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-  },
-  demoButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    textAlign: 'center',
-    fontSize: 13,
-  },
-  hint: {
-    color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 4,
-  },
+  submitBtnDisabled: { opacity: 0.6 },
+  submitBtnText: { color: colors.textInverse, fontSize: 17, fontWeight: '600' },
+  toggleBtn: { alignItems: 'center', paddingVertical: spacing.sm },
+  toggleText: { fontSize: 14, color: colors.textSecondary },
+  toggleLink: { color: colors.accent, fontWeight: '600' },
+  hint: { color: colors.textTertiary, textAlign: 'center', fontSize: 13, lineHeight: 20, marginTop: 32 },
 });
