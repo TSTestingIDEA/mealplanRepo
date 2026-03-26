@@ -256,7 +256,9 @@ async def root():
 async def health():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
-# Include router & CORS
-app.include_router(api_router)
+# CORS must be added before routes
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
+
+# Include router
+app.include_router(api_router)

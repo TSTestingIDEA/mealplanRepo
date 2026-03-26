@@ -51,19 +51,10 @@ Since Vercel doesn't have a built-in database, you need a cloud MongoDB:
 | `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` | `meal-planner-8cff4.firebasestorage.app` |
 | `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `92385648492` |
 | `EXPO_PUBLIC_FIREBASE_APP_ID` | `1:92385648492:web:35fb6bfaeb304991051d49` |
-| `EXPO_PUBLIC_BACKEND_URL` | _(leave empty for now, update after deploy)_ |
+
+> **Note**: Do NOT set `EXPO_PUBLIC_BACKEND_URL` on Vercel. The app automatically uses relative URLs (`/api/...`) when deployed, so frontend and backend are on the same domain.
 
 5. Click **Deploy**!
-
----
-
-## Step 4: Update Backend URL
-
-After Vercel deploys, you'll get a URL like `https://our-kitchen.vercel.app`
-
-1. Go to your Vercel project → **Settings** → **Environment Variables**
-2. Set `EXPO_PUBLIC_BACKEND_URL` = `https://our-kitchen.vercel.app`
-3. Click **Redeploy** (Deployments tab → click ⋮ on latest → Redeploy)
 
 ---
 
