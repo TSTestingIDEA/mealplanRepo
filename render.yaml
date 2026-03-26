@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: our-kitchen-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: meal_planner
+      - key: FIREBASE_PROJECT_ID
+        value: meal-planner-8cff4
+      - key: PYTHON_VERSION
+        value: "3.11.0"

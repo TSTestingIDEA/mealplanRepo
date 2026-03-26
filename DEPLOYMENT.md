@@ -1,50 +1,80 @@
 # 🍽️ Our Kitchen - Deployment Guide
 
-## Step-by-Step: Deploy to Vercel + GitHub
+## Architecture
 
-### Prerequisites
-- A GitHub account (free)
-- A Vercel account (free at vercel.com — sign up with GitHub)
-- A MongoDB Atlas account (free at mongodb.com/atlas)
+```
+Your Phone  →  Vercel (Frontend)  →  Render (Backend API)  →  MongoDB Atlas (Database)
+                  Static web app        FastAPI server           Cloud database
+```
+
+- **Vercel** = Hosts the web app (free)
+- **Render** = Runs the backend API server (free)
+- **MongoDB Atlas** = Stores all your data (free)
 
 ---
 
-## Step 1: Export Code to GitHub
+## Step 1: Push Code to GitHub
 
-1. On the Emergent platform, click **"Save to GitHub"** button
-2. Connect your GitHub account when prompted
-3. Choose to create a **new repository** (e.g., `our-kitchen`)
-4. All code will be pushed automatically
+1. On the Emergent platform, click **"Save to GitHub"**
+2. Connect your GitHub account
+3. Create a **new repository** (e.g., `our-kitchen`)
 
 ---
 
 ## Step 2: Set Up MongoDB Atlas (Free Database)
 
-Since Vercel doesn't have a built-in database, you need a cloud MongoDB:
-
 1. Go to [mongodb.com/atlas](https://www.mongodb.com/atlas) → Sign up (free)
 2. Click **"Build a Database"** → Choose **M0 Free Tier**
-3. Select a region close to you
-4. Create a **Database User** (remember the username & password)
-5. Under **Network Access** → Click **"Add IP Address"** → Click **"Allow Access from Anywhere"** (0.0.0.0/0)
-6. Click **"Connect"** → **"Drivers"** → Copy the connection string
-   - It looks like: `mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/meal_planner?retryWrites=true&w=majority`
-   - Replace `<password>` with your actual database password
+3. Create a **Database User** (save the username & password!)
+4. Under **Network Access** → **"Add IP Address"** → **"Allow Access from Anywhere"** (0.0.0.0/0)
+5. Click **"Connect"** → **"Drivers"** → Copy the connection string:
+   ```
+   mongodb+srv://USERNAME:PASSWORD@cluster0.xxxxx.mongodb.net/meal_planner?retryWrites=true&w=majority
+   ```
+   Replace `USERNAME` and `PASSWORD` with your actual credentials.
 
 ---
 
-## Step 3: Deploy to Vercel
+## Step 3: Deploy Backend on Render (Free)
 
-1. Go to [vercel.com](https://vercel.com) → Log in with GitHub
-2. Click **"Add New Project"** → Import your `our-kitchen` repo
-3. **Important**: Set the **Root Directory** to `.` (root, don't change)
-4. Before clicking Deploy, add **Environment Variables**:
+1. Go to [render.com](https://render.com) → Sign up with GitHub
+2. Click **"New"** → **"Web Service"**
+3. Connect your `our-kitchen` GitHub repo
+4. Configure:
+   - **Name**: `our-kitchen-api`
+   - **Root Directory**: `backend`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn server:app --host 0.0.0.0 --port $PORT`
+5. Add **Environment Variables**:
 
 | Variable | Value |
 |----------|-------|
 | `MONGO_URL` | Your MongoDB Atlas connection string from Step 2 |
 | `DB_NAME` | `meal_planner` |
 | `FIREBASE_PROJECT_ID` | `meal-planner-8cff4` |
+
+6. Click **"Create Web Service"**
+7. Wait for deploy (2-3 min). Copy your Render URL:
+   ```
+   https://our-kitchen-api.onrender.com
+   ```
+8. **Test it**: Open `https://our-kitchen-api.onrender.com/api/health` in your browser. You should see:
+   ```json
+   {"status": "healthy", "timestamp": "..."}
+   ```
+
+---
+
+## Step 4: Deploy Frontend on Vercel (Free)
+
+1. Go to [vercel.com](https://vercel.com) → Sign in with GitHub
+2. Click **"Add New Project"** → Import your `our-kitchen` repo
+3. Add **Environment Variables**:
+
+| Variable | Value |
+|----------|-------|
+| `EXPO_PUBLIC_BACKEND_URL` | Your Render URL (e.g., `https://our-kitchen-api.onrender.com`) |
 | `EXPO_PUBLIC_FIREBASE_API_KEY` | `AIzaSyDRGiv0IM1buTzqE_6mwmwzdl3OVbkMObE` |
 | `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | `meal-planner-8cff4.firebaseapp.com` |
 | `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | `meal-planner-8cff4` |
@@ -52,38 +82,22 @@ Since Vercel doesn't have a built-in database, you need a cloud MongoDB:
 | `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `92385648492` |
 | `EXPO_PUBLIC_FIREBASE_APP_ID` | `1:92385648492:web:35fb6bfaeb304991051d49` |
 
-> **Note**: Do NOT set `EXPO_PUBLIC_BACKEND_URL` on Vercel. The app automatically uses relative URLs (`/api/...`) when deployed, so frontend and backend are on the same domain.
-
-5. Click **Deploy**!
+4. Click **Deploy**!
 
 ---
 
 ## Step 5: Enable Firebase Auth
 
-For the app to work, you need to enable authentication in Firebase:
-
-1. Go to [Firebase Console](https://console.firebase.google.com) → Your project (`meal-planner-8cff4`)
-2. Go to **Authentication** → **Sign-in method**
-3. Enable **Email/Password** (for demo login)
-4. Enable **Google** (for Google Sign-In)
-5. Under **Settings** → **Authorized domains**, add your Vercel domain:
-   - `our-kitchen.vercel.app` (or whatever your domain is)
+1. Go to [Firebase Console](https://console.firebase.google.com) → Your project
+2. **Authentication** → **Sign-in method** → Enable **Email/Password**
+3. Under **Settings** → **Authorized domains**, add:
+   - Your Vercel domain (e.g., `our-kitchen.vercel.app`)
 
 ---
 
 ## That's it! 🎉
 
-Your app is now live at `https://our-kitchen.vercel.app`
-
-### Sharing with your wife:
-- Both of you open the same URL in your phone's browser
-- Log in with the **same Google account** or **same email/password**
-- All recipes, meal plans, and grocery lists will be synced!
-
-### Custom Domain (Optional):
-1. In Vercel → **Settings** → **Domains**
-2. Add your custom domain (e.g., `ourkitchen.com`)
-3. Follow the DNS instructions Vercel provides
+Your app is live! Open your Vercel URL on both phones. Log in with the same email & password to share recipes and meal plans.
 
 ---
 
@@ -91,10 +105,13 @@ Your app is now live at `https://our-kitchen.vercel.app`
 
 | Issue | Fix |
 |-------|-----|
-| "Auth failed" after deploy | Make sure Firebase authorized domains includes your Vercel URL |
-| "Network error" | Check EXPO_PUBLIC_BACKEND_URL is set correctly in Vercel env vars |
-| "Database error" | Verify MONGO_URL in Vercel env vars, check MongoDB Atlas Network Access allows 0.0.0.0/0 |
-| Google Sign-In not working | Enable Google provider in Firebase Auth, add Vercel domain to authorized domains |
+| "Authentication failed" | Enable Email/Password in Firebase Console, add Vercel domain to authorized domains |
+| "Failed to load recipes" | Check Render is running: visit `your-render-url/api/health` |
+| "Network error" | Verify `EXPO_PUBLIC_BACKEND_URL` in Vercel matches your Render URL exactly |
+| Render is slow on first request | Free tier sleeps after 15 min inactivity. First request takes ~30 sec to wake up |
+
+### Render Free Tier Note
+Render's free tier spins down after 15 minutes of no activity. The first request after sleep takes ~30 seconds. For always-on, upgrade to Render's $7/month plan.
 
 ---
 
@@ -102,16 +119,14 @@ Your app is now live at `https://our-kitchen.vercel.app`
 
 ```
 our-kitchen/
-├── api/
-│   └── index.py          ← Backend API (Vercel serverless function)
-├── frontend/
+├── frontend/             ← Deployed to Vercel
 │   ├── app/              ← Expo Router screens
-│   ├── src/              ← Firebase config, API service, auth context
-│   ├── app.json          ← Expo configuration
-│   └── package.json      ← Frontend dependencies
-├── backend/
-│   └── server.py         ← Backend (used in development)
-├── vercel.json           ← Vercel deployment configuration
-├── requirements.txt      ← Python dependencies for Vercel
+│   ├── src/              ← Firebase config, API service
+│   └── package.json
+├── backend/              ← Deployed to Render
+│   ├── server.py         ← FastAPI backend
+│   └── requirements.txt
+├── vercel.json           ← Vercel config (frontend only)
+├── render.yaml           ← Render config (backend only)
 └── DEPLOYMENT.md         ← This file
 ```
