@@ -62,13 +62,28 @@ export default function GroceryScreen() {
     setAdding(true);
     setError('');
     try {
-      const res = await api.addGroceryItem(weekStart, {
-        name,
-        quantity: newQuantity.trim() || undefined,
-      });
-      setItems(res.grocery_list?.items || []);
-      setNewItem('');
-      setNewQuantity('');
+       // Get Firebase ID token
+    const firebaseIdToken = await firebase.auth().currentUser.getIdToken(true);
+
+    const payload = {
+      name,
+      quantity: newQuantity.trim() || undefined,
+      category: undefined, // optional
+    };
+          const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${firebaseIdToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    setItems(data.grocery_list?.items || []);
+    setNewItem('');
+    setNewQuantity('');
     } catch (e: any) {
       console.log('Add item error:', e);
       setError('Failed to add item: ' + (e.message || 'Unknown error'));
