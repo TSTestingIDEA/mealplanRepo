@@ -3,6 +3,19 @@ import { auth } from '../config/firebase'; // adjust path if needed
 // Use relative URL on Vercel (same domain), or EXPO_PUBLIC_BACKEND_URL for development
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com";
 
+async function getAuthHeaders() {
+  const token = await auth.currentUser?.getIdToken();
+
+  if (!token) {
+    throw new Error("User not authenticated");
+  }
+
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+  };
+}
+
 class ApiService {
   private token: string | null = null;
 
