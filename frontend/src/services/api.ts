@@ -1,15 +1,13 @@
+// src/services/api.ts
 import { auth } from '../config/firebase'; // adjust path if needed
 
 // Use relative URL on Vercel (same domain), or EXPO_PUBLIC_BACKEND_URL for development
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com";
 
+// Get Firebase auth headers
 async function getAuthHeaders() {
   const token = await auth.currentUser?.getIdToken();
-
-  if (!token) {
-    throw new Error("User not authenticated");
-  }
-
+  if (!token) throw new Error("User not authenticated");
   return {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
@@ -23,15 +21,14 @@ class ApiService {
     this.token = token;
   }
 
+  // Generic request using token if set
   private async request(path: string, options: RequestInit = {}) {
     const url = `${BACKEND_URL}/api${path}`;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers as Record<string, string> || {}),
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
+    if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
     const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
       const error = await res.text();
@@ -40,12 +37,12 @@ class ApiService {
     return res.json();
   }
 
-  // Auth
+  // ---- Auth ----
   async verifyAuth() {
     return this.request('/auth/verify', { method: 'POST' });
   }
 
-  // Recipes
+  // ---- Recipes ----
   async getRecipes() {
     return this.request('/recipes');
   }
@@ -69,7 +66,7 @@ class ApiService {
     return this.request(`/recipes/search?${params.toString()}`);
   }
 
-  // Meal Plans
+  // ---- Meal Plans ----
   async getMealPlan(weekStart: string) {
     return this.request(`/meal-plans/${weekStart}`);
   }
@@ -78,77 +75,47 @@ class ApiService {
     return this.request('/meal-plans', { method: 'PUT', body: JSON.stringify(data) });
   }
 
-  // Grocery Lists
-  // async getGroceryList(weekStart: string) {
-  //   return this.request(`/grocery-lists/${weekStart}`);
-  // }
-
+  // ---- Grocery Lists ----
   async getGroceryList(weekStart: string) {
-  const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}`, { method: "GET", headers });
+    return res.json();
+  }
 
-  const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}`, {
-    method: "GET",
-    headers,
-  });
+  async addGroceryItem(weekStart: string, item: { name: string; quantity?: string; category?: string }) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error(`Failed to add item: ${res.status}`);
+    return res.json();
+  }
 
-  return res.json();
-}
+  async toggleGroceryItem(weekStart: string, itemId: string) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`, {
+      method: "PUT",
+      headers,
+    });
+    return res.json();
+  }
+
+  async deleteGroceryItem(weekStart: string, itemId: string) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}`, {
+      method: "DELETE",
+      headers,
+    });
+    return res.json();
+  }
 
   async updateGroceryList(data: { week_start: string; items: any[] }) {
     return this.request('/grocery-lists', { method: 'PUT', body: JSON.stringify(data) });
   }
 
- // async addGroceryItem(weekStart: string, item: { name: string; quantity?: string; category?: string }) {
- //    return this.request(`/grocery-lists/${weekStart}/items`, { method: 'POST', body: JSON.stringify(item) });
- //  }
-
-async addGroceryItem(weekStart: string, item: { name: string; quantity?: string; category?: string }) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-
-  // async toggleGroceryItem(weekStart: string, itemId: string) {
-  //   return this.request(`/grocery-lists/${weekStart}/items/${itemId}/toggle`, { method: 'PUT' });
-  // }
-
- async toggleGroceryItem(weekStart: string, itemId: string) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`, {
-    method: "PUT",
-    headers,
-  });
-
-  return res.json();
-}
-
-  // async deleteGroceryItem(weekStart: string, itemId: string) {
-  //   return this.request(`/grocery-lists/${weekStart}/items/${itemId}`, { method: 'DELETE' });
-  // }
-
- async deleteGroceryItem(weekStart: string, itemId: string) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items/${itemId}`, {
-    method: "DELETE",
-    headers,
-  });
-
-  return res.json();
-}
-
-  // Tags
+  // ---- Tags ----
   async getTags() {
     return this.request('/tags');
   }
