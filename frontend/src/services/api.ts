@@ -79,7 +79,7 @@ class ApiService {
   });
 
   return res.json();
-},
+}
 
   async updateGroceryList(data: { week_start: string; items: any[] }) {
     return this.request('/grocery-lists', { method: 'PUT', body: JSON.stringify(data) });
@@ -89,7 +89,7 @@ class ApiService {
  //    return this.request(`/grocery-lists/${weekStart}/items`, { method: 'POST', body: JSON.stringify(item) });
  //  }
 
-addGroceryItem: async (weekStart: string, data: any) => {
+async addGroceryItem(weekStart: string, item: { name: string; quantity?: string; category?: string }) {
   const headers = await getAuthHeaders();
 
   const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items`, {
@@ -103,13 +103,13 @@ addGroceryItem: async (weekStart: string, data: any) => {
   }
 
   return res.json();
-},
+}
 
   // async toggleGroceryItem(weekStart: string, itemId: string) {
   //   return this.request(`/grocery-lists/${weekStart}/items/${itemId}/toggle`, { method: 'PUT' });
   // }
 
-  toggleGroceryItem: async (weekStart: string, itemId: string) => {
+ async toggleGroceryItem(weekStart: string, itemId: string) {
   const headers = await getAuthHeaders();
 
   const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`, {
@@ -118,13 +118,13 @@ addGroceryItem: async (weekStart: string, data: any) => {
   });
 
   return res.json();
-},
+}
 
   // async deleteGroceryItem(weekStart: string, itemId: string) {
   //   return this.request(`/grocery-lists/${weekStart}/items/${itemId}`, { method: 'DELETE' });
   // }
 
-  deleteGroceryItem: async (weekStart: string, itemId: string) => {
+ async deleteGroceryItem(weekStart: string, itemId: string) {
   const headers = await getAuthHeaders();
 
   const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}/items/${itemId}`, {
@@ -133,7 +133,7 @@ addGroceryItem: async (weekStart: string, data: any) => {
   });
 
   return res.json();
-},
+}
 
   // Tags
   async getTags() {
