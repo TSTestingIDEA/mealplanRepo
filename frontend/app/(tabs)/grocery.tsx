@@ -1,3 +1,4 @@
+import { auth } from '../../src/config/firebase'; 
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -63,7 +64,11 @@ export default function GroceryScreen() {
     setError('');
     try {
        // Get Firebase ID token
-    const firebaseIdToken = await firebase.auth().currentUser.getIdToken(true);
+          const firebaseIdToken = await auth.currentUser?.getIdToken(true);
+          
+          if (!firebaseIdToken) {
+            throw new Error("User not authenticated");
+          }
 
     const payload = {
       name,
