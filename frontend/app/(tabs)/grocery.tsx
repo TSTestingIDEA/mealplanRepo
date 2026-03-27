@@ -56,45 +56,27 @@ export default function GroceryScreen() {
     setRefreshing(false);
   };
 
-  const addItem = async () => {
-    const name = newItem.trim();
-    if (!name) return;
+const addItem = async () => {
+  const name = newItem.trim();
+  if (!name) return;
 
-    setAdding(true);
-    setError('');
-    try {
-       // Get Firebase ID token
-          const firebaseIdToken = await auth.currentUser?.getIdToken(true);
-          
-          if (!firebaseIdToken) {
-            throw new Error("User not authenticated");
-          }
-
-    const payload = {
+  setAdding(true);
+  setError('');
+  try {
+    const res = await api.addGroceryItem(weekStart, {
       name,
       quantity: newQuantity.trim() || undefined,
-      category: undefined, // optional
-    };
-          const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${firebaseIdToken}`,
-      },
-      body: JSON.stringify(payload),
     });
-       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const data = await res.json();
-    setItems(data.grocery_list?.items || []);
+    setItems(res.grocery_list?.items || []);
     setNewItem('');
     setNewQuantity('');
-    } catch (e: any) {
-      console.log('Add item error:', e);
-      setError('Failed to add item: ' + (e.message || 'Unknown error'));
-    }
-    setAdding(false);
-  };
+  } catch (e: any) {
+    console.log('Add item error:', e);
+    setError('Failed to add item: ' + (e.message || 'Unknown error'));
+  }
+  setAdding(false);
+};
 
   const toggleItem = async (itemId: string) => {
     // Optimistic update
