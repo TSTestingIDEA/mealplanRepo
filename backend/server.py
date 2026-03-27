@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import json
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -21,10 +22,25 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'meal_planner')]
 
 # Firebase Admin SDK initialization (using project credentials)
-FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'meal-planner-8cff4')
+('''FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'meal-planner-8cff4')
 
 if not firebase_admin._apps:
     firebase_app = firebase_admin.initialize_app(options={
+        'projectId': FIREBASE_PROJECT_ID,
+    })
+
+app = FastAPI()
+api_router = APIRouter(prefix="/api")''')
+
+FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'meal-planner-8cff4')
+cred_json = os.environ.get("FIREBASE_CREDENTIALS")
+
+if not cred_json:
+    raise Exception("FIREBASE_CREDENTIALS is missing in environment")
+
+if not firebase_admin._apps:
+    cred = credentials.Certificate(json.loads(cred_json))
+    firebase_app = firebase_admin.initialize_app(cred, {
         'projectId': FIREBASE_PROJECT_ID,
     })
 
