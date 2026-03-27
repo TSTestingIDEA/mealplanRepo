@@ -70,7 +70,7 @@ class ApiService {
   //   return this.request(`/grocery-lists/${weekStart}`);
   // }
 
-  getGroceryList: async (weekStart: string) => {
+  async getGroceryList(weekStart: string) {
   const headers = await getAuthHeaders();
 
   const res = await fetch(`${BASE_URL}/api/grocery-lists/${weekStart}`, {
