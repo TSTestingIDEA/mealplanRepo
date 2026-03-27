@@ -75,45 +75,87 @@ class ApiService {
     return this.request('/meal-plans', { method: 'PUT', body: JSON.stringify(data) });
   }
 
-  // ---- Grocery Lists ----
-  async getGroceryList(weekStart: string) {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}`, { method: "GET", headers });
-    return res.json();
+// ---- Grocery Lists ----
+
+async getGroceryList(weekStart: string) {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch grocery list: ${res.status}`);
   }
 
-  async addGroceryItem(weekStart: string, item: { name: string; quantity?: string; category?: string }) {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(item),
-    });
-    if (!res.ok) throw new Error(`Failed to add item: ${res.status}`);
-    return res.json();
+  return res.json();
+}
+
+async addGroceryItem(
+  weekStart: string,
+  item: { name: string; quantity?: string; category?: string }
+) {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(item), // ← use `item`
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to add item: ${res.status}`);
   }
 
-  async toggleGroceryItem(weekStart: string, itemId: string) {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`, {
-      method: "PUT",
-      headers,
-    });
-    return res.json();
+  return res.json();
+}
+
+async toggleGroceryItem(weekStart: string, itemId: string) {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(
+    `${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`,
+    { method: "PUT", headers }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to toggle item: ${res.status}`);
   }
 
-  async deleteGroceryItem(weekStart: string, itemId: string) {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}`, {
-      method: "DELETE",
-      headers,
-    });
-    return res.json();
+  return res.json();
+}
+
+async deleteGroceryItem(weekStart: string, itemId: string) {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(
+    `${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}`,
+    { method: "DELETE", headers }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to delete item: ${res.status}`);
   }
 
-  async updateGroceryList(data: { week_start: string; items: any[] }) {
-    return this.request('/grocery-lists', { method: 'PUT', body: JSON.stringify(data) });
+  return res.json();
+}
+
+async updateGroceryList(data: { week_start: string; items: any[] }) {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(`${BACKEND_URL}/api/grocery-lists`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to update grocery list: ${res.status}`);
   }
+
+  return res.json();
+}
 
   // ---- Tags ----
   async getTags() {
