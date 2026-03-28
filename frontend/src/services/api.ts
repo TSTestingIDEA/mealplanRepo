@@ -4,44 +4,21 @@ import { auth } from '../config/firebase'; // adjust path if needed
 // Use relative URL on Vercel (same domain), or EXPO_PUBLIC_BACKEND_URL for development
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com";
 
-// Add this helper above the class
-function waitForAuthReady(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // If already signed in, use it immediately
-    if (auth.currentUser) {
-      auth.currentUser.getIdToken().then(resolve).catch(reject);
-      return;
-    }
-    // Otherwise wait for Firebase to finish initializing
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      unsubscribe();
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          resolve(token);
-        } catch (e) {
-          reject(e);
-        }
-      } else {
-        reject(new Error("User not authenticated"));
-      }
-    });
-  });
-}
-
 class ApiService {
+
+  private token: string | null = null;
+
+  setToken(token: string | null) {
+    this.token = token;
+  }
 
 private async request(path: string, options: RequestInit = {}) {
   const url = `${BACKEND_URL}/api${path}`;
-
-  const token = await waitForAuthReady(); // ← waits for Firebase
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
     ...(options.headers as Record<string, string> || {}),
   };
-
+  if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const error = await res.text();
