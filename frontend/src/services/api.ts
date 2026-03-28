@@ -4,38 +4,27 @@ import { auth } from '../config/firebase'; // adjust path if needed
 // Use relative URL on Vercel (same domain), or EXPO_PUBLIC_BACKEND_URL for development
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com";
 
-// Get Firebase auth headers
-async function getAuthHeaders() {
+class ApiService {
+
+private async request(path: string, options: RequestInit = {}) {
+  const url = `${BACKEND_URL}/api${path}`;
+
   const token = await auth.currentUser?.getIdToken();
   if (!token) throw new Error("User not authenticated");
-  return {
+
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
+    ...(options.headers as Record<string, string> || {}),
   };
+
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(error || `API error ${res.status}`);
+  }
+  return res.json();
 }
-
-class ApiService {
-  private token: string | null = null;
-
-  setToken(token: string | null) {
-    this.token = token;
-  }
-
-  // Generic request using token if set
-  private async request(path: string, options: RequestInit = {}) {
-    const url = `${BACKEND_URL}/api${path}`;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string> || {}),
-    };
-    if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
-    const res = await fetch(url, { ...options, headers });
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(error || `API error ${res.status}`);
-    }
-    return res.json();
-  }
 
   // ---- Auth ----
   async verifyAuth() {
@@ -78,83 +67,36 @@ class ApiService {
 // ---- Grocery Lists ----
 
 async getGroceryList(weekStart: string) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch grocery list: ${res.status}`);
-  }
-
-  return res.json();
+  return this.request(`/grocery-lists/${weekStart}`);
 }
 
 async addGroceryItem(
   weekStart: string,
   item: { name: string; quantity?: string; category?: string }
 ) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BACKEND_URL}/api/grocery-lists/${weekStart}/items`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(item), // ← use `item`
+  return this.request(`/grocery-lists/${weekStart}/items`, {
+    method: 'POST',
+    body: JSON.stringify(item),
   });
-
-  if (!res.ok) {
-    throw new Error(`Failed to add item: ${res.status}`);
-  }
-
-  return res.json();
 }
 
 async toggleGroceryItem(weekStart: string, itemId: string) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(
-    `${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}/toggle`,
-    { method: "PUT", headers }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Failed to toggle item: ${res.status}`);
-  }
-
-  return res.json();
+  return this.request(`/grocery-lists/${weekStart}/items/${itemId}/toggle`, {
+    method: 'PUT',
+  });
 }
 
 async deleteGroceryItem(weekStart: string, itemId: string) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(
-    `${BACKEND_URL}/api/grocery-lists/${weekStart}/items/${itemId}`,
-    { method: "DELETE", headers }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Failed to delete item: ${res.status}`);
-  }
-
-  return res.json();
+  return this.request(`/grocery-lists/${weekStart}/items/${itemId}`, {
+    method: 'DELETE',
+  });
 }
 
 async updateGroceryList(data: { week_start: string; items: any[] }) {
-  const headers = await getAuthHeaders();
-
-  const res = await fetch(`${BACKEND_URL}/api/grocery-lists`, {
-    method: "PUT",
-    headers,
+  return this.request('/grocery-lists', {
+    method: 'PUT',
     body: JSON.stringify(data),
   });
-
-  if (!res.ok) {
-    throw new Error(`Failed to update grocery list: ${res.status}`);
-  }
-
-  return res.json();
 }
 
   // ---- Tags ----
