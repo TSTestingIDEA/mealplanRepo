@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { colors, spacing } from '../src/constants/theme';
@@ -13,6 +13,9 @@ export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchRecipe();
@@ -29,20 +32,18 @@ export default function RecipeDetailScreen() {
     setLoading(false);
   };
 
-  const handleDelete = () => {
-    Alert.alert('Delete Recipe', 'Are you sure you want to delete this recipe?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await api.deleteRecipe(id!);
-            router.back();
-          } catch (e) {
-            console.log('Delete error:', e);
-          }
-        }
-      },
-    ]);
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      await api.deleteRecipe(id!);
+      setShowDeleteConfirm(false);
+      router.back();
+    } catch (e: any) {
+      console.log('Delete error:', e);
+      setError('Failed to delete: ' + (e.message || 'Unknown error'));
+    }
+    setDeleting(false);
   };
 
   if (loading) {
@@ -73,10 +74,12 @@ export default function RecipeDetailScreen() {
         <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity testID="delete-recipe-btn" onPress={handleDelete} style={styles.deleteBtn}>
+        <TouchableOpacity testID="delete-recipe-btn" onPress={() => setShowDeleteConfirm(true)} style={styles.deleteBtn}>
           <Trash2 size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
+
+      {error ? <View style={styles.errorBanner}><Text style={styles.errorText}>{error}</Text></View> : null}
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Hero */}
@@ -142,6 +145,39 @@ export default function RecipeDetailScreen() {
           <Text style={styles.urlText} numberOfLines={2}>{recipe.url}</Text>
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={showDeleteConfirm} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Delete Recipe?</Text>
+            <Text style={styles.modalMessage}>This will permanently remove "{recipe?.title}" from your recipes.</Text>
+            {error ? <Text style={styles.modalError}>{error}</Text> : null}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                testID="cancel-delete-btn"
+                style={styles.cancelBtn}
+                onPress={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="confirm-delete-btn"
+                style={[styles.confirmDeleteBtn, deleting && { opacity: 0.5 }]}
+                onPress={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.confirmDeleteText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -185,4 +221,16 @@ const styles = StyleSheet.create({
   ingredientText: { fontSize: 16, color: colors.textPrimary, fontWeight: '500' },
   notesText: { fontSize: 15, color: colors.textSecondary, lineHeight: 22 },
   urlText: { fontSize: 13, color: colors.textTertiary, lineHeight: 18 },
+  errorBanner: { backgroundColor: '#FFF0EE', paddingVertical: 8, paddingHorizontal: spacing.lg, marginHorizontal: spacing.md },
+  errorText: { color: colors.error, fontSize: 13, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  modalBox: { backgroundColor: colors.elevated, borderRadius: 16, padding: 24, width: '100%', maxWidth: 340 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+  modalMessage: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 16 },
+  modalError: { color: colors.error, fontSize: 13, marginBottom: 12 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 9999, backgroundColor: colors.surface },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  confirmDeleteBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 9999, backgroundColor: colors.error },
+  confirmDeleteText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
