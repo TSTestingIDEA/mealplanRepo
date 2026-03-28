@@ -13,7 +13,42 @@ class ApiService {
     this.token = token;
   }
 
-private async request(path: string, options: RequestInit = {}) {
+    // Always get a fresh token from Firebase before each request
+  private async getFreshToken(): Promise<string | null> {
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const freshToken = await currentUser.getIdToken(false); // false = only refresh if expired
+        this.token = freshToken;
+        return freshToken;
+      }
+    } catch (e) {
+      console.log('Token refresh error:', e);
+    }
+    return this.token;
+  }
+ 
+  private async request(path: string, options: RequestInit = {}) {
+    const url = `${BACKEND_URL}/api${path}`;
+ 
+    // Always ensure we have a fresh token
+    const token = await this.getFreshToken();
+ 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string> || {}),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+ 
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error || `API error ${res.status}`);
+    }
+    return res.json();
+  }
+
+(''' private async request(path: string, options: RequestInit = {}) {
   const url = `${BACKEND_URL}/api${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -26,7 +61,7 @@ private async request(path: string, options: RequestInit = {}) {
     throw new Error(error || `API error ${res.status}`);
   }
   return res.json();
-}
+}''')
 
   // ---- Auth ----
   async verifyAuth() {
