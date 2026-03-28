@@ -48,7 +48,7 @@ class ApiService {
     return res.json();
   }
 
-"""private async request(path: string, options: RequestInit = {}) {
+/*private async request(path: string, options: RequestInit = {}) {
   const url = `${BACKEND_URL}/api${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -61,7 +61,7 @@ class ApiService {
     throw new Error(error || `API error ${res.status}`);
   }
   return res.json();
-} """
+} */
 
   // ---- Auth ----
   async verifyAuth() {
