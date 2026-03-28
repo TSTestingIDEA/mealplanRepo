@@ -29,6 +29,7 @@ export default function GroceryScreen() {
   const fetchGroceryList = async () => {
     try {
       setError('');
+      console.log('weekStart value:', weekStart);
       const res = await api.getGroceryList(weekStart);
       setItems(res.grocery_list?.items || []);
     } catch (e: any) {
