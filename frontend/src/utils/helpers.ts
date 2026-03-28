@@ -2,13 +2,27 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+// Helper to format date as YYYY-MM-DD in LOCAL timezone
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getWeekStart(date: Date): string {
   const d = new Date(date);
-  const day = d.getDay();
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   d.setDate(diff);
   d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
+  return toLocalDateString(d); // ← use local timezone instead of UTC
+}
+
+export function shiftWeek(weekStart: string, offset: number): string {
+  const d = new Date(weekStart + 'T00:00:00'); // force local time parse
+  d.setDate(d.getDate() + offset * 7);
+  return toLocalDateString(d); // ← use local timezone instead of UTC
 }
 
 export function getWeekDates(weekStart: string): { day: string; label: string; fullLabel: string; date: Date; dateStr: string }[] {
@@ -26,11 +40,6 @@ export function getWeekDates(weekStart: string): { day: string; label: string; f
   });
 }
 
-export function shiftWeek(weekStart: string, offset: number): string {
-  const d = new Date(weekStart + 'T00:00:00');
-  d.setDate(d.getDate() + offset * 7);
-  return d.toISOString().split('T')[0];
-}
 
 export function formatWeekRange(weekStart: string): string {
   const start = new Date(weekStart + 'T00:00:00');
