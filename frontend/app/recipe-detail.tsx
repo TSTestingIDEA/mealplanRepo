@@ -13,6 +13,7 @@ export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchRecipe();
@@ -34,11 +35,15 @@ export default function RecipeDetailScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
+          setDeleting(true);
           try {
             await api.deleteRecipe(id!);
+            setDeleting(false);
             router.back();
-          } catch (e) {
+          } catch (e: any) {
+            setDeleting(false);
             console.log('Delete error:', e);
+            Alert.alert('Error', 'Failed to delete recipe: ' + (e?.message || 'Please try again.'));
           }
         }
       },
@@ -73,8 +78,10 @@ export default function RecipeDetailScreen() {
         <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <TouchableOpacity testID="delete-recipe-btn" onPress={handleDelete} style={styles.deleteBtn}>
-          <Trash2 size={20} color={colors.error} />
+        <TouchableOpacity testID="delete-recipe-btn" onPress={handleDelete} style={styles.deleteBtn} disabled={deleting}>
+          {deleting
+            ? <ActivityIndicator size="small" color={colors.error} />
+            : <Trash2 size={20} color={colors.error} />}
         </TouchableOpacity>
       </View>
 
