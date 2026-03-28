@@ -2,7 +2,8 @@
 import { auth } from '../config/firebase'; // adjust path if needed
 
 // Use relative URL on Vercel (same domain), or EXPO_PUBLIC_BACKEND_URL for development
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com";
+// REPLACE WITH — strip any trailing slash
+const BACKEND_URL = (process.env.EXPO_PUBLIC_BACKEND_URL || "https://mealplanrepo.onrender.com").replace(/\/$/, '');
 
 class ApiService {
 
