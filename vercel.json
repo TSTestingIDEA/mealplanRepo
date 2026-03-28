@@ -9,7 +9,9 @@
       }
     }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/frontend/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "frontend/$1" }
   ]
 }
+
