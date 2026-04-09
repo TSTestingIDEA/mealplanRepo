@@ -11,16 +11,16 @@ import uuid
 from datetime import datetime, timezone
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get('DB_NAME', 'meal_planner')]
+# MongoDB connection — deferred to lifespan to avoid DNS timeout at import time
+client = None
+db = None
 
-# Firebase Admin SDK initialization (using project credentials)
+# Firebase Admin SDK initialization
 FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'meal-planner-8cff4')
 
 if not firebase_admin._apps:
@@ -28,12 +28,23 @@ if not firebase_admin._apps:
         'projectId': FIREBASE_PROJECT_ID,
     })
 
-app = FastAPI()
-api_router = APIRouter(prefix="/api")
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global client, db
+    mongo_url = os.environ['MONGO_URL']
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[os.environ.get('DB_NAME', 'meal_planner')]
+    logger.info("MongoDB connected")
+    yield
+    if client:
+        client.close()
+
+app = FastAPI(lifespan=lifespan)
+api_router = APIRouter(prefix="/api")
 
 # ---- Pydantic Models ----
 
@@ -374,7 +385,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
